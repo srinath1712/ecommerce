@@ -9,22 +9,27 @@ import java.util.Random;
 @Service
 public class OtpService {
 
+    // Single map keyed by "email:purpose"
     private final Map<String, String> otpMap = new HashMap<>();
-    private final Map<String, String> otpContextMap = new HashMap<>();
 
     public String generateOtp(String email, String purpose) {
         String otp = String.format("%06d", new Random().nextInt(999999));
-        otpMap.put(email, otp);
-        otpContextMap.put(email, purpose);
+        String key = email + ":" + purpose;
+        otpMap.put(key, otp);
+
+        System.out.println("Generated OTP for " + key + " = " + otp); // Debug
         return otp;
     }
 
     public boolean verifyOtp(String email, String otp, String purpose) {
-        return otp.equals(otpMap.get(email)) && purpose.equals(otpContextMap.get(email));
+        String key = email + ":" + purpose;
+        String storedOtp = otpMap.get(key);
+
+        System.out.println("Verifying OTP for " + key + ", Input: " + otp + ", Stored: " + storedOtp); // Debug
+        return otp != null && otp.equals(storedOtp);
     }
 
     public void clearOtp(String email) {
-        otpMap.remove(email);
-        otpContextMap.remove(email);
+        otpMap.keySet().removeIf(k -> k.startsWith(email + ":"));
     }
 }

@@ -24,24 +24,24 @@
 
         @PostMapping("/login")
         public ResponseEntity<LoginResponse> login(@RequestBody LoginUser request) {
-            String username = request.getUsername();
+            String mailId = request.getMailId();
             String password = request.getPassword();
 
-            logger.info("Login attempt for user: {}", username);
+            logger.info("Login attempt for mailId: {}", mailId);
 
-            Optional<LoginUser> userOpt = userRepository.findByUsername(username);
+            Optional<LoginUser> userOpt = userRepository.findByMailId(mailId);
 
             if (userOpt.isPresent() && userOpt.get().getPassword().equals(password)) {
                 LoginUser user = userOpt.get();
-                logger.info("Login successful for user: {}", username);
+                logger.info("Login successful for mailId: {}", mailId);
                 return ResponseEntity.ok(new LoginResponse("Login successful", user.getMailId()));
-            }
-            else {
-                logger.warn("Login failed for user: {}", username);
+            } else {
+                logger.warn("Login failed for mailId: {}", mailId);
                 return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(new LoginResponse("Invalid credentials",null));
+                        .body(new LoginResponse("Invalid credentials", null));
             }
         }
+
 
 
         @PostMapping("/register")
@@ -50,9 +50,18 @@
             String password = request.getPassword();
             String mailId = request.getMailId();
 
-            logger.info("Register attempt for user: {}", username);
+            logger.info("Register attempt: username={}, mailId={}", username, mailId);
 
-            // Check if username or mail already exists
+            // ✅ Validate input fields
+            if (username == null || username.trim().isEmpty() ||
+                    password == null || password.trim().isEmpty() ||
+                    mailId == null || mailId.trim().isEmpty()) {
+
+                logger.warn("Registration failed - Missing required fields.");
+                return ResponseEntity.badRequest().body(new LoginResponse("All fields (username, password, mailId) are required", null));
+            }
+
+            // ✅ Check if username or mailId already exists
             boolean usernameExists = userRepository.findByUsername(username).isPresent();
             boolean mailExists = userRepository.findByMailId(mailId).isPresent();
 
@@ -62,14 +71,21 @@
                         .body(new LoginResponse("Username or Email already exists", null));
             }
 
-            // Save new user
-            LoginUser newUser = new LoginUser(username, password, mailId);
-            userRepository.save(newUser);
-            logger.info("Registration successful for user: {}", username);
+            // ✅ Save new user
+            try {
+                LoginUser newUser = new LoginUser(username, password, mailId);
+                userRepository.save(newUser);
+                logger.info("Registration successful for user: {}", username);
 
-            return ResponseEntity.status(HttpStatus.CREATED)
-                    .body(new LoginResponse("User registered successfully", mailId));
+                return ResponseEntity.status(HttpStatus.CREATED)
+                        .body(new LoginResponse("User registered successfully", mailId));
+            } catch (Exception e) {
+                logger.error("Registration failed due to server error: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(new LoginResponse("Registration failed due to an internal error", null));
+            }
         }
+
 
 //        @PostMapping("/forget-password")
 //        public ResponseEntity<LoginResponse> resetPassword(@RequestBody ForgotPasswordRequest request) {
